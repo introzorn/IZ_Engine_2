@@ -42,7 +42,11 @@ class View
                 $f = str_replace($match[0][$i], $f2, $f);
             }
         }
+      
+       
         foreach ($param as $key => $val) {
+            // echo(gettype($val).'; ');
+             if(gettype($val)=='array'){continue ;}
             $f = str_replace("%[$key]", $val, $f);
         }
 

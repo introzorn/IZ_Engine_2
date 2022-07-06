@@ -307,6 +307,7 @@ public static $mime_types = array(
 	'.mpeg' => 'video/mpeg',
 	'.mpg' => 'audio/mpeg',
 	'.mpg' => 'video/mpeg',
+	'.mp4' => 'video/mp4',
 	'.mpga' => 'audio/mpeg',
 	'.mpp' => 'application/vnd.ms-project',
 	'.mpt' => 'application/x-project',
@@ -645,8 +646,8 @@ public static $mime_types = array(
 );
 
     public static function GetMIME($ext){
-        $rt=self::$mime_types[$ext];
-        if($rt==''){$rt="application/octet-stream";}
+       
+        if(array_key_exists($ext,self::$mime_types)){$rt=self::$mime_types[$ext];}else{$rt="application/octet-stream";}
         return $rt;
     }
 
