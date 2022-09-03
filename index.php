@@ -1,4 +1,14 @@
 <?php
+/**
+ * Точка вхождения index
+ * 
+ * Этот модуль запускается первый при любых запросах
+ * Подгружает все необходимые параметры, подгружает Автолоадер и инициализирует сессию
+ * 
+ * @author Хроленко П.A. <introzorn@yandex.ru>
+ * @version 2.0
+ * @copyright IntroZorn (c) 2022, Хроленко П.А.
+ */
 namespace App{
 
 
@@ -14,8 +24,15 @@ if (file_exists('config.php')) {
 }
 
 
+if(defined('HTTPS_ONLY')===true && constant('HTTPS_ONLY')===true && $_SERVER['HTTPS']==""){
+    $url="https://".$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
+    header("HTTP/1.1 301 Moved Permanently");
+    header("Location: $url");
+    exit();
+}
+
+session_set_cookie_params(["lifetime"=>SESSION_LIFE]);
 session_name('IZ_HASH');  //устанавливаем параметры сессии
-session_set_cookie_params(SESSION_LIFE);
 session_start();
 
 

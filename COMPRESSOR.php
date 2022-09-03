@@ -1,19 +1,22 @@
 <?php
 namespace App;
 use App\Router;
-// здесь в массиве можно указать какие файлы необходимо принудительно сжимать
-// пока реализован механизм только сжатия css b js
-// указывать необходимо от view тоесть view/css/style.js
-// Router::COMPRESSOR([
+/**
+ * Конфигурирование компрессова
+ * 
+ * Данная конструкция описывает все файлы которые будут сжаты компрессором
+ * --------------------------
+ * Пример
+ * Router::COMPRESSOR([
+ *      "view/css/style.css",
+ *      "view/css/mystyle.css",
+ *  ]);
+ * 
+ * @copyright IntroZorn (c) 2022, Хроленко П.А.
+ */
 
-//     "view/js/animhead.js",
-//     "view/js/script.js",
-//     "view/css/style.css",
-//     "view/css/mystyle.css",
 
-//  ]);
-
-
+ 
 Router::COMPRESSOR([
 
     "view/js/animhead.js",
@@ -23,9 +26,6 @@ Router::COMPRESSOR([
 
 
  ]);
-
-
-//===========================
 
 
 

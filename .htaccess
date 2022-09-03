@@ -7,4 +7,4 @@ RewriteEngine on
 RewriteBase / 
 
 
-RewriteRule ^(.*)$ index.php?$1 [L]
+RewriteRule ^(.*)$ index.php?$1 [L,QSA]

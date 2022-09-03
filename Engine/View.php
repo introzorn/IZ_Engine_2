@@ -59,9 +59,5 @@ class View
     public static function GetBaseUrl()
     {
         return Router::GetBaseUrl();
-        $base = explode('/', $_SERVER['SCRIPT_NAME']);
-        $base[count($base) - 1] = "";
-        $baseURL = (isset($_SERVER['HTTPS']) ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'] . join("/", $base);
-        return $baseURL;
     }
 }

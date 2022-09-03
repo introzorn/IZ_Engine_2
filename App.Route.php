@@ -1,5 +1,16 @@
 <?php
-
+/**
+ * Роуты приложения
+ * 
+ * Данная конструкция описывает все роуты которые будут отлавливаться и обробатываться движком
+ *
+ * Пример
+ * Router::get("/page/[id]/config/bbb*",function(Query $Request){........}); // отлов диномичного параметра $id
+ * Router::get("/",function(Query $Request){........});
+ * Router::get("/main",function(Query $Request){........});
+ * 
+ * @copyright IntroZorn (c) 2022, Хроленко П.А.
+ */
 namespace App {
 
     use App\Autoloader;
@@ -10,14 +21,11 @@ namespace App {
     use App\Models;
     use App;
 
-//R::get("*/page/[id]/config/bbb*",function(Q $Request){});
 
+Router::newget("/[key0]/sdfsdaf/[key1]/['(.*)']","Main->Index");
 
-// здесь вф можете описывать роуты которые вы хотите использовать в веб приложении
+Router::get("*/",function(Query $Request){
 
-
-Router::get("*/page/[id]/config/bbb*",function(Query $Request){
-var_dump($Request);
 
 });
 

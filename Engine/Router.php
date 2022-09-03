@@ -2,13 +2,120 @@
 
 namespace App;
 
-use App\Controllers;
+use App\Controllers as C;
 use App\Models;
 use App\Query;
 //класс для роутинга
 class Router
 {	
 	private static $COMPRSTR;
+
+
+
+	public static function newget(String $pattern,  $callable ){
+	
+		if ($_SERVER['REQUEST_METHOD'] != 'GET' && $_SERVER['REQUEST_METHOD'] != 'HEAD') {
+			return;
+		}
+
+		$pattern = trim($pattern);
+		if (strlen($pattern) == 0) {
+			return;
+		}
+
+		$requestParts  = explode('?', $_SERVER['REQUEST_URI']);
+		$keys["_request_string"]="";
+		
+
+	
+		if (strpos($pattern,"[") || strpos($pattern,"']") ){
+			$patternArray=explode("/",$pattern);
+			
+			$iterat=1;
+		
+			$patternArray=array_map(function($item) use(&$keys,&$iterat,&$nextItem) {
+				
+				if(preg_match("/(\[\'(.*?)'\])/",$item,$match)){
+					$part=explode("||",$match[2]);
+					sizeof($part)==0?$part[]="":false;
+					trim($part[1])==""?$part[1]="_param".$iterat++:false;
+					$keys[]=$part[1];
+					$str= preg_quote(str_replace($match[0],"%param%",$item));
+					return str_replace("%param%",$part[0],$str);
+					
+
+				}else if (preg_match("/(\[([^'][^\W]\w*?[^'])\])/",$item,$match)){
+
+					$keys[]=$match[2];
+					$str= preg_quote(str_replace($match[0],"%param%",$item));
+					return str_replace("%param%","(.*)",$str);
+
+				}
+
+			
+				return $item;
+			},$patternArray);
+
+
+			$pattern=join('\\/',$patternArray);
+
+		}else{
+			
+			$pattern=preg_quote($pattern);
+			
+		}
+
+		
+		if($pattern[0].$pattern[1] == "\\*"){$pattern[0]=" ";$pattern[1]=" ";}else{$pattern="^".$pattern;}
+		if($pattern[strlen($pattern) - 1].$pattern[strlen($pattern) - 2]=="\\*" ){
+			$pattern[strlen($pattern) - 1]=" ";
+		    $pattern[strlen($pattern) - 2]=" ";
+		}else{$pattern .= "?";}
+
+
+	
+
+		$pattern="/".trim($pattern)."/";
+	
+		if(preg_match($pattern,$requestParts[0],$matches)){
+
+			$reqPram=array_combine($keys,$matches);
+			$_GET=array_merge ($reqPram, $_GET);
+			$Request = new Query($reqPram);
+			if (gettype($callable)=="string"){
+				if(strpos($callable,"::")>0){
+					$fn="App\\Controllers\\".$callable;
+					$fn($Request);
+					die;
+				}
+
+				$clb=explode("->",$callable);
+				$cls="App\\Controllers\\".$clb[0];
+				$controller= new $cls;
+			    $fn=$clb[1];
+
+				
+				$controller->$fn($Request);
+				die;
+			}
+			$callable($Request);
+			die;
+		}	
+
+	
+
+	return;
+
+	}
+
+
+	private static function realisePatern(){
+		
+	}
+
+
+
+
 	//роут для гет запросов
 	public static function get(string $rPath, $fx)
 	{
@@ -291,11 +398,12 @@ class Router
 
 	public static function GetBaseUrl()
 	{
+		
 		$base = explode('/', $_SERVER['SCRIPT_NAME']);
 		$base[count($base) - 1] = "";
 		
-		$baseURL = (isset($_SERVER['HTTPS']) ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'] . join("/", $base);
-		if(defined('BASE_REPLACE')){$baseURL=str_replace(constant('BASE_REPLACE'),"/",$baseURL);}
+		$baseURL = (isset($_SERVER['HTTPS']) ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'].'/' ;//. join("/", $base);
+	//	if(defined('BASE_REPLACE')){$baseURL=str_replace(constant('BASE_REPLACE'),"/",$baseURL);}
 		return $baseURL;
 	}
 	public static function GetBaseUrl2()
