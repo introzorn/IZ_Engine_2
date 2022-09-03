@@ -12,20 +12,21 @@ class Router
 
 
 
-	public static function newget(String $pattern,  $callable ){
+	public static function RealizeURL(String $method,String $pattern,  $callable ,$domain=false){
 	
-		if ($_SERVER['REQUEST_METHOD'] != 'GET' && $_SERVER['REQUEST_METHOD'] != 'HEAD') {
+		
+		if ($_SERVER['REQUEST_METHOD'] != strtoupper($method) && $_SERVER['REQUEST_METHOD'] != 'HEAD' && strtoupper($method)!="ALL") {
 			return;
 		}
 
 		$pattern = trim($pattern);
-		if (strlen($pattern) == 0) {
-			return;
-		}
+
+		if ($pattern == "") {return;}
 
 		$requestParts  = explode('?', $_SERVER['REQUEST_URI']);
 		$keys["_request_string"]="";
 		
+		if($domain==true){$requestParts[0]=$_SERVER['HTTP_HOST'].$requestParts[0];}
 
 	
 		if (strpos($pattern,"[") || strpos($pattern,"']") ){
