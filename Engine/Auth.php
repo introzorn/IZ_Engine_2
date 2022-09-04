@@ -7,9 +7,9 @@ use App\Models;
 use App\Models\Model;
 use App\Validator as V;
 use PDO;
-use App\Models\PDOEX;
+use App\PDOEX;
 //мдель пользователя по дефолту
-class users extends Model
+class users extends \App\Model
 {
 
     public function MIGRATE()

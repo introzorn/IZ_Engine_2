@@ -12,13 +12,11 @@ use App\Router;
 use App\Opengraph;
 
 
-class Main
+class _Helper_Class_Maket_
 {
 
     function Index(Query $Request){
-        $data=Lang::LOAD("index");
-      
-        View::Show("main",$data);
+ 
     }
 
 }

@@ -30,7 +30,7 @@ namespace App;
 		$this->method=$_SERVER['REQUEST_METHOD'] ;
 		$this->header=getallheaders();
 		$this->BASE_URL=Router::GetBaseUrl();
-		$this->BASE_URL2=Router::GetBaseUrl2();
+		$this->BASE_URL2=Router::GetBaseUrl();
 		$this->IsAjax=self::ifAjax();
 		//$this->session;
 		

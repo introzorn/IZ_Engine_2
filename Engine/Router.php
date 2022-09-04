@@ -1,309 +1,270 @@
 <?php
 
+/**
+ * Класс Роутинга
+ * 
+ * В данном классе описывается парсинг URL адреса для дальнейшего перераспределения функционала приложения
+ * 
+ * @copyright IntroZorn (c) 2022, Хроленко П.А.
+ */
+
 namespace App;
 
 use App\Controllers as C;
 use App\Models;
 use App\Query;
-//класс для роутинга
+
 class Router
-{	
+{
 	private static $COMPRSTR;
 
+  	/**
+     * Парсер роутера
+     * 
+     * Этот приватный метод используется для парсинга URL адреса и возвращения параметров запроса в пользовательскую функцию
+     *
+     * @param string $method HTTP метод который отлавливаем [GET,POST,HEAD] ALL - игнорирует отлов
+     * @param string $pattern патерн по которому сверяется URL
+	 * @param mixed $callable пользовательская функция колбэк в случае если урл соответствует патерну
+	 * @param boolean $domain указываем будет ли учитываться доменное имя
+     * @return void метод не возвращает значений
+     */
+	private static function RealizeURL(String $method, String $pattern,  $callable, $domain = false)
+	{
 
-
-	public static function RealizeURL(String $method,String $pattern,  $callable ,$domain=false){
-	
-		
-		if ($_SERVER['REQUEST_METHOD'] != strtoupper($method) && $_SERVER['REQUEST_METHOD'] != 'HEAD' && strtoupper($method)!="ALL") {
+		if ($_SERVER['REQUEST_METHOD'] != strtoupper($method) && $_SERVER['REQUEST_METHOD'] != 'HEAD' && strtoupper($method) != "ALL") {
 			return;
 		}
 
 		$pattern = trim($pattern);
 
-		if ($pattern == "") {return;}
-
-		$requestParts  = explode('?', $_SERVER['REQUEST_URI']);
-		$keys["_request_string"]="";
 		
-		if($domain==true){$requestParts[0]=$_SERVER['HTTP_HOST'].$requestParts[0];}
-
-	
-		if (strpos($pattern,"[") || strpos($pattern,"']") ){
-			$patternArray=explode("/",$pattern);
-			
-			$iterat=1;
-		
-			$patternArray=array_map(function($item) use(&$keys,&$iterat,&$nextItem) {
-				
-				if(preg_match("/(\[\'(.*?)'\])/",$item,$match)){
-					$part=explode("||",$match[2]);
-					sizeof($part)==0?$part[]="":false;
-					trim($part[1])==""?$part[1]="_param".$iterat++:false;
-					$keys[]=$part[1];
-					$str= preg_quote(str_replace($match[0],"%param%",$item));
-					return str_replace("%param%",$part[0],$str);
-					
-
-				}else if (preg_match("/(\[([^'][^\W]\w*?[^'])\])/",$item,$match)){
-
-					$keys[]=$match[2];
-					$str= preg_quote(str_replace($match[0],"%param%",$item));
-					return str_replace("%param%","(.*)",$str);
-
-				}
-
-			
-				return $item;
-			},$patternArray);
 
 
-			$pattern=join('\\/',$patternArray);
 
-		}else{
-			
-			$pattern=preg_quote($pattern);
-			
+		if ($pattern == "" ) {
+			return;
 		}
 
+		$requestParts  = explode('?', $_SERVER['REQUEST_URI']);
+
+		if($pattern=="/" && $pattern!=$requestParts[0]){return;}
+
+		$keys["_request_string"] = "";
+
+
+
+
+		if ($domain == true) {
+			$requestParts[0] = $_SERVER['HTTP_HOST'] . $requestParts[0];
+		}
+
+
+		if (strpos($pattern, "[") || strpos($pattern, "']")) {
+			$patternArray = explode("/", $pattern);
+
+			$iterat = 1;
+
+			$patternArray = array_map(function ($item) use (&$keys, &$iterat, &$nextItem) {
+
+				if (preg_match("/(\[\'(.*?)'\])/", $item, $match)) {
+					$part = explode("||", $match[2]);
+					sizeof($part) == 0 ? $part[] = "" : false;
+					trim($part[1]) == "" ? $part[1] = "_param" . $iterat++ : false;
+					$keys[] = $part[1];
+					$str = preg_quote(str_replace($match[0], "%param%", $item));
+					return str_replace("%param%", $part[0], $str);
+				} else if (preg_match("/(\[([^'][^\W]\w*?[^'])\])/", $item, $match)) {
+
+					$keys[] = $match[2];
+					$str = preg_quote(str_replace($match[0], "%param%", $item));
+					return str_replace("%param%", "(.*)", $str);
+				}
+
+
+				return $item;
+			}, $patternArray);
+
+
+			$pattern = join('\\/', $patternArray);
+		} else {
+
+		$pattern = preg_quote($pattern,"/");
+
 		
-		if($pattern[0].$pattern[1] == "\\*"){$pattern[0]=" ";$pattern[1]=" ";}else{$pattern="^".$pattern;}
-		if($pattern[strlen($pattern) - 1].$pattern[strlen($pattern) - 2]=="\\*" ){
-			$pattern[strlen($pattern) - 1]=" ";
-		    $pattern[strlen($pattern) - 2]=" ";
-		}else{$pattern .= "?";}
-
-
 	
-
-		$pattern="/".trim($pattern)."/";
+		}
 	
-		if(preg_match($pattern,$requestParts[0],$matches)){
+		$pattern=trim($pattern);
+		if ($pattern[0] . $pattern[1] == "\\*") {
+			$pattern[0] = " ";
+			$pattern[1] = " ";
+		} else {
+			$pattern = "^" . $pattern;
+		}
+		
 
-			$reqPram=array_combine($keys,$matches);
-			$_GET=array_merge ($reqPram, $_GET);
+		if ($pattern[strlen($pattern) - 1] . $pattern[strlen($pattern) - 2] == "\\*") {
+			$pattern[strlen($pattern) - 1] = " ";
+			$pattern[strlen($pattern) - 2] = " ";
+		} else {
+			$pattern .= "?";
+		}
+	
+		$pattern = "/" . trim($pattern) . "/";
+		
+		if (preg_match($pattern, $requestParts[0], $matches)) {
+			
+		
+
+			if(sizeof($keys)<sizeof($matches)){array_unshift($keys,"");}
+			if(sizeof($keys)>sizeof($matches)){array_unshift($matches,"");}
+
+			$reqPram = array_combine($keys, $matches);
+		
+			$_GET = array_merge($reqPram, $_GET);
 			$Request = new Query($reqPram);
-			if (gettype($callable)=="string"){
-				if(strpos($callable,"::")>0){
-					$fn="App\\Controllers\\".$callable;
+			if (gettype($callable) == "string") {
+				if (strpos($callable, "::") > 0) {
+					$fn = "App\\Controllers\\" . $callable;
 					$fn($Request);
 					die;
 				}
 
-				$clb=explode("->",$callable);
-				$cls="App\\Controllers\\".$clb[0];
-				$controller= new $cls;
-			    $fn=$clb[1];
+				$clb = explode("->", $callable);
+				$cls = "App\\Controllers\\" . $clb[0];
+				$controller = new $cls;
+				$fn = $clb[1];
 
-				
+
 				$controller->$fn($Request);
 				die;
 			}
 			$callable($Request);
 			die;
-		}	
+		}
 
-	
 
-	return;
 
+		return;
 	}
 
 
-	private static function realisePatern(){
-		
-	}
+  	/**
+     * Отловить url GET запроса
+     * 
+     * Этот метод позваляет отловить URL адрес GET Запроса. 
+     *
+     * @param string $pattern Патерн который может содержать в себе [name] - динамичесую переменную или ['(.*)||name']регулярное выражение а также знак * в начале и конце для указания нестрогости сравнивания
+	 * @param mixed $callable пользовательская функция колбэк в случае если url соответствует патерну
+     * @return void метод не возвращает значений
+     */
 
-
-
-
-	//роут для гет запросов
-	public static function get(string $rPath, $fx)
+	public static function get(string $pattern, $function)
 	{
-		if ($_SERVER['REQUEST_METHOD'] != 'GET') {
-			return;
-		}
-		$ReqA  = explode('?', $_SERVER['REQUEST_URI']);
-		$url = $ReqA[0];
-		$l = "^";
-		$r = "$";
-		if ($rPath[0] == "*") {
-			$l = "";
-			$rPath = mb_substr($rPath, 1, strlen($rPath) - 1);
-		}
-		if ($rPath[strlen($rPath) - 1] == "*") {
-			$r = "";
-			$rPath = mb_substr($rPath, 0, strlen($rPath) - 1);
-		}
-		if (preg_match_all("/\[([^\[\]]+)\]/", $rPath, $keys)) {
-			$rPath = preg_quote($rPath, "/");
-			$rPath = str_replace("\[", "[", $rPath);
-			$rPath = str_replace("\]", "]", $rPath);
-			$rPath = preg_replace("/\[([^\[\]]+)\]/", "(.*)", $rPath);
-			if (preg_match_all("/" . $l . $rPath . $r . "/", $url, $values)) {
-				$val = self::refixArray($values);
-				$reqPram = array_combine($keys[1], $val);
-				$_GET=array_merge ($reqPram, $_GET);
-				$Request = new Query($reqPram);
-				$fx($Request);
-				return;
-			}
-		}
-
-		$pPath = preg_quote($rPath, "/");
-
-		if (preg_match_all('/' . $l . $pPath . $r . '/', $url)) {
-			$Request = new Query([]);
-			$fx($Request);
-			return;
-		}
+		self::RealizeURL("GET", $pattern, $function);
 	}
 
-	//роут для пост запросов
-	public static function post(string $rPath, $fx)
+
+	/**
+     * Отловить url POST запроса
+     * 
+     * Этот метод позваляет отловить URL адрес POST Запроса. 
+     *
+     * @param string $pattern Патерн который может содержать в себе [name] - динамичесую переменную или ['(.*)||name']регулярное выражение а также знак * в начале и конце для указания нестрогости сравнивания
+	 * @param mixed $callable пользовательская функция колбэк в случае если url соответствует патерну
+     * @return void метод не возвращает значений
+     */
+
+	public static function post(string $pattern, $function)
 	{
-		if ($_SERVER['REQUEST_METHOD'] != 'POST') {
-			return;
-		}
-		$ReqA  = explode('?', $_SERVER['REQUEST_URI']);
-		$url = $ReqA[0];
-		$l = "^";
-		$r = "$";
-		if ($rPath[0] == "*") {
-			$l = "";
-			$rPath = mb_substr($rPath, 1, strlen($rPath) - 1);
-		}
-		if ($rPath[strlen($rPath) - 1] == "*") {
-			$r = "";
-			$rPath = mb_substr($rPath, 0, strlen($rPath) - 1);
-		}
-		if (preg_match_all("/\[([^\[\]]+)\]/", $rPath, $keys)) {
-			$rPath = preg_quote($rPath, "/");
-			$rPath = str_replace("\[", "[", $rPath);
-			$rPath = str_replace("\]", "]", $rPath);
-			$rPath = preg_replace("/\[([^\[\]]+)\]/", "(.*)", $rPath);
-			if (preg_match_all("/" . $l . $rPath . $r . "/", $url, $values)) {
-				$val = self::refixArray($values);
-				$reqPram = array_combine($keys[1], $val);
-				$_GET=array_merge ($reqPram, $_GET);
-				$Request = new Query($reqPram);
-				$fx($Request);
-				return;
-			}
-		}
-
-		$pPath = preg_quote($rPath, "/");
-
-		if (preg_match_all('/' . $l . $pPath . $r . '/', $url)) {
-			$Request = new Query([]);
-			$fx($Request);
-			return;
-		}
+		self::RealizeURL("POST", $pattern, $function);
 	}
 
 
-	//роуты по доменам
+	/**
+     * Отловить url запроса
+     * 
+     * Этот метод позваляет отловить URL адрес GET/POST Запроса. Можно использовать для группировки роутов 
+     *
+     * @param string $pattern Патерн который может содержать в себе [name] - динамичесую переменную или ['(.*)||name']регулярное выражение а также знак * в начале и конце для указания нестрогости сравнивания
+	 * @param mixed $callable пользовательская функция колбэк в случае если url соответствует патерну
+     * @return void метод не возвращает значений
+     */
 
-
-	public static function Dget(string $rPath, $fx)
+	public static function group(string $pattern, $function)
 	{
-		if ($_SERVER['REQUEST_METHOD'] != 'GET') {
-			return;
-		}
-		$ReqA  = explode('?', $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
-		$url = $ReqA[0];
-		$l = "^";
-		$r = "$";
-		if ($rPath[0] == "*") {
-			$l = "";
-			$rPath = mb_substr($rPath, 1, strlen($rPath) - 1);
-		}
-		if ($rPath[strlen($rPath) - 1] == "*") {
-			$r = "";
-			$rPath = mb_substr($rPath, 0, strlen($rPath) - 1);
-		}
-		if (preg_match_all("/\[([^\[\]]+)\]/", $rPath, $keys)) {
-			$rPath = preg_quote($rPath, "/");
-			$rPath = str_replace("\[", "[", $rPath);
-			$rPath = str_replace("\]", "]", $rPath);
-			$rPath = preg_replace("/\[([^\[\]]+)\]/", "(.*)", $rPath);
-			if (preg_match_all("/" . $l . $rPath . $r . "/", $url, $values)) {
-				$val = self::refixArray($values);
-				$reqPram = array_combine($keys[1], $val);
-				$_GET=array_merge ($reqPram, $_GET);
-				$Request = new Query($reqPram);
-				$fx($Request);
-				return;
-			}
-		}
-
-		$pPath = preg_quote($rPath, "/");
-
-		if (preg_match_all('/' . $l . $pPath . $r . '/', $url)) {
-			$Request = new Query([]);
-			$fx($Request);
-			return;
-		}
+		self::RealizeURL("ALL", $pattern, $function);
 	}
 
-	public static function Dpost(string $rPath, $fx)
+
+  	/**
+     * Отловить url GET запроса
+     * 
+     * Этот метод позваляет отловить URL адрес GET Запроса. 
+	 * Этот метод учитывает в работе также доменное имя
+     *
+     * @param string $pattern Патерн который может содержать в себе [name] - динамичесую переменную или ['(.*)||name']регулярное выражение а также знак * в начале и конце для указания нестрогости сравнивания
+	 * @param mixed $callable пользовательская функция колбэк в случае если url соответствует патерну
+     * @return void метод не возвращает значений
+     */
+
+	public static function dom_get(string $pattern, $function)
 	{
-		if ($_SERVER['REQUEST_METHOD'] != 'POST') {
-			return;
-		}
-		$ReqA  = explode('?', $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
-		$url = $ReqA[0];
-		$l = "^";
-		$r = "$";
-		if ($rPath[0] == "*") {
-			$l = "";
-			$rPath = mb_substr($rPath, 1, strlen($rPath) - 1);
-		}
-		if ($rPath[strlen($rPath) - 1] == "*") {
-			$r = "";
-			$rPath = mb_substr($rPath, 0, strlen($rPath) - 1);
-		}
-		if (preg_match_all("/\[([^\[\]]+)\]/", $rPath, $keys)) {
-			$rPath = preg_quote($rPath, "/");
-			$rPath = str_replace("\[", "[", $rPath);
-			$rPath = str_replace("\]", "]", $rPath);
-			$rPath = preg_replace("/\[([^\[\]]+)\]/", "(.*)", $rPath);
-			if (preg_match_all("/" . $l . $rPath . $r . "/", $url, $values)) {
-				$val = self::refixArray($values);
-				$reqPram = array_combine($keys[1], $val);
-				$_GET=array_merge ($reqPram, $_GET);
-				$Request = new Query($reqPram);
-				$fx($Request);
-				return;
-			}
-		}
-
-		$pPath = preg_quote($rPath, "/");
-
-		if (preg_match_all('/' . $l . $pPath . $r . '/', $url)) {
-			$Request = new Query([]);
-			$fx($Request);
-			return;
-		}
+		self::RealizeURL("GET", $pattern, $function, true);
 	}
 
 
 
+	/**
+	 * 
+	 * Отловить url POST запроса
+	 * 
+	 * Этот метод позваляет отловить URL адрес POST Запроса. 
+	 * Этот метод учитывает в работе также доменное имя
+	 *
+	 * @param string $pattern Патерн который может содержать в себе [name] - динамичесую переменную или ['(.*)||name']регулярное выражение а также знак * в начале и конце для указания нестрогости сравнивания
+	 * @param mixed $callable пользовательская функция колбэк в случае если url соответствует патерну
+	 * @return void метод не возвращает значений
+	 */
 
-	private static function refixArray($arr)
+	public static function dom_post(string $pattern, $function)
 	{
-		$rtArr = [];
-		for ($i = 1; $i < sizeof($arr); $i++) {
-			array_push($rtArr, $arr[$i][0]);
-		}
-		return $rtArr;
+		self::RealizeURL("POST", $pattern, $function, true);
+	}
+
+
+	/**
+     * Отловить url запроса
+     * 
+     * Этот метод позваляет отловить URL адрес GET/POST Запроса. Можно использовать для группировки роутов.
+	 * Этот метод учитывает в работе также доменное имя.
+     *
+     * @param string $pattern Патерн который может содержать в себе [name] - динамичесую переменную или ['(.*)||name']регулярное выражение а также знак * в начале и конце для указания нестрогости сравнивания
+	 * @param mixed $callable пользовательская функция колбэк в случае если url соответствует патерну
+     * @return void метод не возвращает значений
+     */
+
+	public static function dom_group(string $pattern, $function)
+	{
+		self::RealizeURL("ALL", $pattern, $function);
 	}
 
 
 
+
+
+
+	/**
+     * Чекер реальных обьектов
+     * 
+     * Этот метод выдает файл клииенту, если он существует физически
+	 * 
+     *
+     */
 
 	public static function ifREAL()
-	{ //проверка если запрос это реальный файл 
+	{
 
 		$base = explode('/', $_SERVER['SCRIPT_NAME']);
 		$base[count($base) - 1] = "";
@@ -326,18 +287,18 @@ class Router
 				header('accept-ranges: bytes');
 				header('Content-Description: File Transfer');
 				//header('Content-Type: ' . mime_content_type($Furl));
-				header('Content-Type: ' . iMIME::GetMIME('.' . $Ftype));
+				header('Content-Type: ' . MIME::GetMIME('.' . $Ftype));
 				//header('Content-Disposition: attachment; filename=' . basename($Furl));
 				header('Content-Transfer-Encoding: binary');
 				header('Expires: 0');
 				header('Cache-Control: must-revalidate');
 				header('Pragma: public');
 				header('Content-Length: ' . filesize($Furl));
-				if(self::if_COMP($Furl)){
-					
-					$minfile=self::DO_COMPRESS($Furl);
+				if (self::if_COMP($Furl)) {
+
+					$minfile = self::DO_COMPRESS($Furl);
 					header('Content-Length: ' . strlen($minfile));
-					echo($minfile);
+					echo ($minfile);
 					die;
 				}
 				readfile($Furl);
@@ -347,32 +308,50 @@ class Router
 	}
 
 
-	//тут реализован механизм компрессора
+
+
+
+
+
 	public static function COMPRESSOR($array)
 	{
-		self::$COMPRSTR=$array;
+		self::$COMPRSTR = $array;
 	}
-	private static function if_COMP($file){
-		return in_array($file,self::$COMPRSTR);
+
+
+	private static function if_COMP($file)
+	{
+		return in_array($file, self::$COMPRSTR);
 	}
-	public static function DO_COMPRESS($file){
-		$buf=file_get_contents($file);
+
+
+	public static function DO_COMPRESS($file)
+	{
+		$buf = file_get_contents($file);
 		$fta = explode('.', $file);
 		$Ftype = strtolower($fta[sizeof($fta) - 1]);
 
-		if ($Ftype=='css'){return self::compress_css($buf);}
-		if ($Ftype=='js'){return self::compress_js($buf);}
+		if ($Ftype == 'css') {
+			return self::compress_css($buf);
+		}
+		if ($Ftype == 'js') {
+			return self::compress_js($buf);
+		}
 		return $buf;
 	}
 
-	private static  function compress_css($buffer) {
-		
+
+	private static  function compress_css($buffer)
+	{
+
 		$buffer = preg_replace("!/\*[^*]*\*+([^/][^*]*\*+)*/!", "", $buffer);
 		$buffer = str_replace(array("\r\n", "\r", "\n", "\t", "  ", "    ", "    "), "", $buffer);
 		return $buffer;
 	}
 
-	private  static   function compress_js($buffer) {
+
+	private  static   function compress_js($buffer)
+	{
 		$buffer = preg_replace("/\/\/[^\n]*/", "", $buffer);
 		$buffer = preg_replace("/(?:(?:\/\*(?:[^*]|(?:\*+[^*\/]))*\*+\/)|(?:(?<!\:|\\\|\'|\")\/\/.*))/", "", $buffer);
 		$buffer = str_replace(array("\r\n", "\r", "\n", "\t", "  ", "    ", "    "), "", $buffer);
@@ -385,7 +364,13 @@ class Router
 
 
 
-	//редирект по необходимости
+	/**
+     * Производит редирект на указанный url
+     *
+     * @param string $url - Адрес перенаправления, может быть как и точным так и относительным
+     * @return void 
+     */
+
 	public static function Redirect($url)
 	{
 
@@ -397,87 +382,151 @@ class Router
 		die();
 	}
 
+
+
+
+	/**
+     * Метод возвращает базовый URL веб приложения
+     *
+     * @return string базовый URL веб приложения
+     */
+
 	public static function GetBaseUrl()
 	{
-		
-		$base = explode('/', $_SERVER['SCRIPT_NAME']);
-		$base[count($base) - 1] = "";
-		
-		$baseURL = (isset($_SERVER['HTTPS']) ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'].'/' ;//. join("/", $base);
-	//	if(defined('BASE_REPLACE')){$baseURL=str_replace(constant('BASE_REPLACE'),"/",$baseURL);}
-		return $baseURL;
-	}
-	public static function GetBaseUrl2()
-	{
+
 		$base = explode('/', $_SERVER['SCRIPT_NAME']);
 		$base[count($base) - 1] = "";
 
-		$baseURL = (isset($_SERVER['HTTPS']) ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'] . join("/", $base);
-		return $baseURL;
-	}
-
-
-	public static function JSON_Response($jsonDATA, $flag=0){
+		$baseURL = (isset($_SERVER['HTTPS']) ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'] . '/'; 
 	
-		$resp=json_encode($jsonDATA, $flag);
-		if(!$resp){$resp='{error:"bad json"}';}
+		return $baseURL;
+	}
+
+
+
+	/**
+	 * Ответ в JSON
+	 * 
+     * Метод превращает обьект в JSON и выдает его пользователю
+     *
+	 * @param object $jsonDATA - JSON обьект
+	 * @param int $flag -флаги jsonencode
+     * @return void 
+     */
+
+	public static function JSON_Response($jsonDATA, $flag = 0)
+	{
+
+		$resp = json_encode($jsonDATA, $flag);
+		if (!$resp) {
+			$resp = '{error:"bad json"}';
+		}
 		header('Content-type: application/json');
 		die($resp);
 	}
-	public static function TEXT_Response($TextDATA){
+
+	/**
+	 * Ответ в text/plain
+	 * 
+     * Метод просто возвращает текст пользователю
+     *
+	 * @param string $TextDATA - Текст который вернется пользователю
+     * @return void 
+     */
+
+	public static function TEXT_Response($TextDATA)
+	{
 		header('Content-type: text/plain');
 		die($TextDATA);
 	}
-	public static function Error($ErrNum, $ErrText){
-	
-		switch ($ErrNum) {
-			case 100: $text = 'Continue'; break;
-			case 101: $text = 'Switching Protocols'; break;
-			case 200: $text = 'OK'; break;
-			case 201: $text = 'Created'; break;
-			case 202: $text = 'Accepted'; break;
-			case 203: $text = 'Non-Authoritative Information'; break;
-			case 204: $text = 'No Content'; break;
-			case 205: $text = 'Reset Content'; break;
-			case 206: $text = 'Partial Content'; break;
-			case 300: $text = 'Multiple Choices'; break;
-			case 301: $text = 'Moved Permanently'; break;
-			case 302: $text = 'Moved Temporarily'; break;
-			case 303: $text = 'See Other'; break;
-			case 304: $text = 'Not Modified'; break;
-			case 305: $text = 'Use Proxy'; break;
-			case 400: $text = 'Bad Request'; break;
-			case 401: $text = 'Unauthorized'; break;
-			case 402: $text = 'Payment Required'; break;
-			case 403: $text = 'Forbidden'; break;
-			case 404: $text = 'Not Found'; break;
-			case 405: $text = 'Method Not Allowed'; break;
-			case 406: $text = 'Not Acceptable'; break;
-			case 407: $text = 'Proxy Authentication Required'; break;
-			case 408: $text = 'Request Time-out'; break;
-			case 409: $text = 'Conflict'; break;
-			case 410: $text = 'Gone'; break;
-			case 411: $text = 'Length Required'; break;
-			case 412: $text = 'Precondition Failed'; break;
-			case 413: $text = 'Request Entity Too Large'; break;
-			case 414: $text = 'Request-URI Too Large'; break;
-			case 415: $text = 'Unsupported Media Type'; break;
-			case 500: $text = 'Internal Server Error'; break;
-			case 501: $text = 'Not Implemented'; break;
-			case 502: $text = 'Bad Gateway'; break;
-			case 503: $text = 'Service Unavailable'; break;
-			case 504: $text = 'Gateway Time-out'; break;
-			case 505: $text = 'HTTP Version not supported'; break;
-			default:
-			$text = 'Bad Request'; break;
-			break;
-		}
 
 
 
-		header("HTTP/1.0 $ErrNum $text");
-	
-		die($ErrText);
+
+
+	/**
+	 * Ответ сервера
+	 * 
+     * Метод генерирует ответ сервера
+     *
+	 * @param int $status - номер ответ
+	 * @param string $data - Этот текст будет показан в браузере. чтобы не выводить в брацзер $data выставлаем как null
+     * @return array в случае если $headonly = true. устанавливается только заголовок и метод возвращает массив из кода и текста статуса 
+     */
+
+	public static function HTTP_Status(int $status, $data="",$headOnly=false)
+	{
+
+		
+		$stat[100] = 'Continue';
+		$stat[101] = 'Switching Protocols';
+		$stat[200] = 'OK';
+		$stat[201] = 'Created';
+		$stat[202] = 'Accepted';
+		$stat[203] = 'Non-Authoritative Information';
+		$stat[204] = 'No Content';
+		$stat[205] = 'Reset Content';
+		$stat[206] = 'Partial Content';
+		$stat[300] = 'Multiple Choices';
+		$stat[301] = 'Moved Permanently';
+		$stat[302] = 'Moved Temporarily';
+		$stat[303] = 'See Other';
+		$stat[304] = 'Not Modified';
+		$stat[305] = 'Use Proxy';
+		$stat[400] = 'Bad Request';
+		$stat[401] = 'Unauthorized';
+		$stat[402] = 'Payment Required';
+		$stat[403] = 'Forbidden';
+		$stat[404] = 'Not Found';
+		$stat[405] = 'Method Not Allowed';
+		$stat[406] = 'Not Acceptable';
+		$stat[407] = 'Proxy Authentication Required';
+		$stat[408] = 'Request Time-out';
+		$stat[409] = 'Conflict';
+		$stat[410] = 'Gone';
+		$stat[411] = 'Length Required';
+		$stat[412] = 'Precondition Failed';
+		$stat[413] = 'Request Entity Too Large';
+		$stat[414] = 'Request-URI Too Large';
+		$stat[415] = 'Unsupported Media Type';
+		$stat[500] = 'Internal Server Error';
+		$stat[501] = 'Not Implemented';
+		$stat[502] = 'Bad Gateway';
+		$stat[503] = 'Service Unavailable';
+		$stat[504] = 'Gateway Time-out';
+		$stat[505] = 'HTTP Version not supported';
+
+		if(!isset($stat[$status])){$status=200;}
+
+		header("HTTP/1.1 $status $stat[$status]");
+
+		if($headOnly){return [$status , $stat[$status]];}
+
+		if(is_null($data)){die;}
+		$data==""?$data=$status.'-'.$stat[$status]:false;
+		die("<h1>$data</h1>");
 	}
+
+	/**
+	 * Генератор ошибок
+	 * 
+     * Выдает клиенту ошибку в виде текста или страницу
+     *
+	 * @param int $num - номер ошибки
+	 * @param string $view - страница вью. если параметр не задан то генерируется только header; Если $view="" тогда вызывается стандартная страница ошибок; если $view="text" выдается текст ошибки
+     * @return void
+     */
+
+	public static function Error(int $num,$view=null){
+		self::HTTP_Status($num,"",true);
+		if(is_null($view)){die;}
+		$status=Lang::LOAD("http_status");
+		$text=$status[$num]??$status[0];
+		if($view==""){$view="ErrorPage/HTTP_ERROR";}
+		if($view=="text"){die("<h1>$num - $text</h1>");}
+		View::Show($view,['error'=>$num,'error_text'=>$text]);
+	}
+
+
 
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models;
+namespace App;
 
 use PDO;
 use PDOException;
@@ -18,7 +18,10 @@ class Model
     public static $connection;
     public static $DIE_IF_ERROR = true;
     public  $paginator;
-
+    public  $CHARSET ="utf8";
+    public  $COLLATE ="";
+    private  $ifCOLLATE="";
+    //public  $COLLATE ="unicode_ci";
     //условия where orwhere like limit
 
     private $where = "";
@@ -33,8 +36,12 @@ class Model
 
 
 
-    public function __construct($DB_TABLE = '') //конструктор модели
+    public function __construct() //конструктор модели
     {
+        if($this->CHARSET==""){$this->CHARSET="utf8";}
+        $this->ifCOLLATE=$this->COLLATE?" COLLATE ".$this->CHARSET."_".$this->COLLATE:"";
+       
+
         $DB_TABLE = $this->getClass();
         $this->DB_HOST = isset($this->DB_HOST) ? $this->DB_HOST : DB_HOSTNAME;
         $this->DB_PORT = isset($this->DB_PORT) ? $this->DB_PORT : DB_PORT;
@@ -51,18 +58,24 @@ class Model
     public function connect($errflag = false) //соединение с базой данных
     {
       
-
+       
         try {
             if (self::$connection) {
                 $db=self::$connection;
             }else{
-                 $db = new PDO("mysql:host=" . DB_HOSTNAME . ":" . DB_PORT . ";dbname=" . DB_DATABASE . ";charset=UTF8", DB_USERNAME, DB_PASSWORD);
+                
+                $options = [PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES '.$this->CHARSET.$this->ifCOLLATE];
+
+             
+                 $db = new PDO("mysql:host=" . DB_HOSTNAME . ":" . DB_PORT . ";dbname=" . DB_DATABASE . ";charset=".$this->CHARSET.';', DB_USERNAME, DB_PASSWORD,$options);
                  self::$connection = $db;
             }
 
            
-
-            $db->exec("set names utf8");
+          
+            $db->exec("SET NAMES ".$this->CHARSET.$this->ifCOLLATE.';');
+          
+           
             $res = $db->query("SHOW TABLES LIKE '" . $this->DB_TABLE . "'");
 
           
@@ -111,9 +124,10 @@ class Model
         $this->MIGRATE();
         
         $TABLENAME = $this->DB_TABLE;
-        $charset = "utf-8";
+        $charset = $this->CHARSET;
         $primary = "";
-        $sql_maket = "CREATE TABLE IF NOT EXISTS `%NAME%` (%ROWS% %PRIM%) ENGINE=MyISAM AUTO_INCREMENT=1 DEFAULT CHARSET=%CHARSET%;";
+        $ifCOLLATE=$this->COLLATE?" COLLATE=".$this->CHARSET."_".$this->COLLATE:"";
+        $sql_maket = "CREATE TABLE IF NOT EXISTS `%NAME%` (%ROWS% %PRIM%) ENGINE=MyISAM AUTO_INCREMENT=1 DEFAULT CHARSET=%CHARSET%$ifCOLLATE;";
         $row = [];
         foreach ($this->TABLE as $key => $val) {
 
@@ -138,7 +152,7 @@ class Model
         $sql_maket = str_replace('%CHARSET%', $charset, $sql_maket);
         $sql_maket = str_replace('%ROWS%', join(', ', $row), $sql_maket);
 
-      
+    
         $cn= self::$connection->query($sql_maket);
      
     }
@@ -149,6 +163,7 @@ class Model
             $keys = array_keys($array);
             $keys_var = join("`,`", $keys);
             $keys_preg = join(", :", $keys);
+            self::$connection->exec("SET NAMES ".$this->CHARSET.$this->ifCOLLATE.';');
             $req = self::$connection->prepare("INSERT INTO " . $this->DB_TABLE . " (`" . $keys_var . "`) VALUES (:" . $keys_preg . ")");
             $ret = $req->execute($array);
             if (!$ret) {
@@ -170,14 +185,16 @@ class Model
             }
             $keys_preg = join(", ", $keys);
             $array['id'] = $id;
+            self::$connection->exec("SET NAMES ".$this->CHARSET.$this->ifCOLLATE.';');
             $req = self::$connection->prepare("UPDATE " . $this->DB_TABLE . "  SET $keys_preg WHERE id=:id");
             $ret = $req->execute($array);
+           
             if (!$ret) {
                 return false;
             }
             return true;
         } catch (PDOEX $err) {
-
+            
             return false;
         }
     }
@@ -219,7 +236,7 @@ class Model
                 $this->where = " WHERE " . $this->where;
             }
             $sql = "SELECT * FROM " . $this->DB_TABLE . "" . $this->where . $this->orderby . $limit;
-
+            self::$connection->exec("SET NAMES ".$this->CHARSET.$this->ifCOLLATE.';');
             $req = self::$connection->query($sql);
            //if(!$req){die($sql);} 'если надо проверить ошибку запроса
             $ret = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -248,8 +265,9 @@ class Model
             if ($this->where != "" && strpos($this->where, " WHERE ") <= 0) {
                 $this->where = " WHERE " . $this->where;
             }
+           
             $sql = "DELETE FROM " . $this->DB_TABLE . "" . $this->where . $limit;
-
+            self::$connection->exec("SET NAMES ".$this->CHARSET.$this->ifCOLLATE.';');
             $req = self::$connection->query($sql);
          
            // $ret = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -275,8 +293,12 @@ class Model
             if ($this->where != "" && strpos($this->where, " WHERE ") <= 0) {
                 $this->where = " WHERE " . $this->where;
             }
-            $sql = "SELECT COUNT(*) FROM " . $this->DB_TABLE . "" . $this->where . $this->orderby;
 
+            $ifCOLLATE=$this->COLLATE?"  COLLATE ".$this->CHARSET."_".$this->COLLATE:"";
+            $this->connection->exec("SET NAMES ".$this->CHARSET.$ifCOLLATE);
+
+            $sql = "SELECT COUNT(*) FROM " . $this->DB_TABLE . "" . $this->where . $this->orderby;
+            self::$connection->exec("SET NAMES ".$this->CHARSET.$this->ifCOLLATE.';');
             $req = self::$connection->query($sql);
             $ret = $req->fetchAll(PDO::FETCH_ASSOC);
             if (!$ret) {
@@ -310,6 +332,7 @@ class Model
     public function query($sql,$featch=PDO::FETCH_ASSOC)
     { //быстрый доступ к пдо
         try {
+            self::$connection->exec("SET NAMES ".$this->CHARSET.$this->ifCOLLATE.';');
             $req = self::$connection->query($sql,$featch);
             return $req;
         } catch (PDOEX $err) {
@@ -320,6 +343,7 @@ class Model
     public function prepare($sql)
     { //быстрый доступ к пдо
         try {
+            self::$connection->exec("SET NAMES ".$this->CHARSET.$this->ifCOLLATE.';');
             $req = self::$connection->prepare($sql);
             return $req;
         } catch (PDOEX $err) {
@@ -369,6 +393,17 @@ class Model
         $this->orderby = " ORDER BY " . $key . $sort;
         return $this;
     }
+
+
+
+    public function NOW(){
+        $res=$this->query("SELECT NOW() as `timestamp`");
+        if($res === false){return false;}
+        $ret=$res->fetch(PDO::FETCH_ASSOC);
+        if($ret === false){return false;}
+        return $ret['timestamp'];
+    }
+
 }
 
 

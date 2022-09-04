@@ -38,12 +38,12 @@ session_start();
 
 require_once("Engine/AUTOLOADER.php"); //подгружаем автозагрузчик
 
-Autoloader::Autoload();
+
 
 require_once('COMPRESSOR.php'); //подгружаем конфиги компрессора
 Router::ifREAL();
 
-require_once("App.Route.php"); // подгружаем роуты
+require_once("Routes.php"); // подгружаем роуты
 
-
+Router::Error(404);
 }

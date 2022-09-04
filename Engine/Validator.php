@@ -20,7 +20,7 @@ namespace App;
                 $ret=true;
                     break;
             }
-            if($ret==false){return $par[0];}
+            if($ret===false){return $par[0];}
 
         }
 
@@ -29,34 +29,34 @@ namespace App;
 
 
 //валидатор по длинне строки
-    public static function V_MinMAX($var,$min,$max){
+    public static function V_MinMAX($var,$min,$max):bool{
         if (strlen($var)>=$min && strlen($var)<=$max){ return true;}
         return false;
     }
 //валидатор емэила
-    public static function V_EMAIL($var){
+    public static function V_EMAIL($var):bool{
         return self::PregVALID($var,"/.+@.+\..+/");
     }   
 //валидатор латинских букв
-    public static function V_LAT($var){
+    public static function V_LAT($var):bool{
     return self::PregVALID($var,"/[^A-Za-z]/");
     }   
 
     //валидатор латинский логин
-    public static function V_LOG($var){
+    public static function V_LOG($var):bool{
         return self::PregVALID($var,"/[^A-Za-z0-9]/");
      }   
 
 //валидатор целых
-    public static function V_NUM($var){
+    public static function V_NUM($var):bool{
     return self::PregVALID($var,"/^[0-9]+$/");
     }   
 //валидатор паролей
-    public static function V_PASS($var){
+    public static function V_PASS($var):bool{
     return self::PregVALID($var,"/^[A-Za-z0-9]+$/");
     }   
     //валидация по регулярке
-    public static function PregVALID($var,$preg){
+    public static function PregVALID($var,$preg):bool{
 
         if(preg_match($preg,$var)){
             return true;

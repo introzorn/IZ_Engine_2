@@ -3,7 +3,7 @@
 namespace App\Models;
 use App;
 use App\Model as M;
-class table1 extends App\Model{
+class _Helper_Class_Maket_ extends App\Model{
     // public $CHARSET='utf8mb4'; 
     // public $COLLATE='unicode_ci';
 

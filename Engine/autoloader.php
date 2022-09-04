@@ -1,62 +1,16 @@
 <?php
 
+spl_autoload_register(function ($class_name) {
+	if(strpos($class_name,"App\\")===0){
 
-namespace App;
-
-use App\Controllers;
-use App\Models;
-
-class Autoloader
-{
-
-	private static $modules = [
-	
-
-		'ISQL.php', //MYSQL посредник проекта
-		'MIME.php', //майм типы
-		'Router.php', //роутер проекта
-		'Query.php', //запрос к серверу
-		'Validator.php', //полключаем валидаторы
-		'View.php', //полключаем вью
-		'Model.php', //полключаем модель
-		'Lang.php', //полключаем языки
-		'Formater.php', //Форматирование строк
-		'Mailer.php', //Почтовый агент
-		//'Opengraph.php', //Разметка опенграф
-		//'Auth.php', //полключаем Авторизацию
-	];
-
-	public function __construct()
-	{
-	}
+		$path="Engine\\";
+		if(strpos($class_name,"App\\Controllers")===0){$path="";}
+		if(strpos($class_name,"App\\Models")===0){$path="";}
+		
+		$class_name= str_replace("\\","/",str_replace("App\\",$path,$class_name));
 
 
-	public static function initMOD()
-	{
-		for ($i = 0; $i < sizeof(self::$modules); $i++) {
-			require_once('./Engine/' . self::$modules[$i]); //подгрузка модулей
+	}	
+    require_once $class_name . '.php';
+});
 
-		}
-	}
-
-
-	public static function Autoload()
-	{
-
-
-		self::initMOD();
-
-		//загружаем контролеры
-		$filelist = glob("Controllers/*.php");
-
-		foreach ($filelist as $filename) {
-			require_once('./' . $filename);
-		}
-		//загружаем модели
-		$filelist = glob("Models/*.php");
-
-		foreach ($filelist as $filename) {
-			require_once('./' . $filename);
-		}
-	}
-}
